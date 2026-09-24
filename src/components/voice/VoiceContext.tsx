@@ -16,6 +16,28 @@ import {
   VoiceContextValue,
 } from "./voiceTypes";
 
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0: { transcript: string };
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: { results: SpeechRecognitionResultLike[] }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type WindowWithSpeechRecognition = typeof window & {
+  SpeechRecognition?: new () => SpeechRecognitionLike;
+  webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+};
+
 const DEFAULT_COMMANDS: VoiceCommandDef[] = [
   {
     id: "nav-dashboard",
@@ -83,14 +105,14 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<VoiceCommandDef | null>(null);
   const [panelOpen, setPanelOpen] = useState<boolean>(false);
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   // Feature detection
   useEffect(() => {
     if (typeof window === "undefined") return;
     const SpeechRecognitionClass =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as WindowWithSpeechRecognition).SpeechRecognition ??
+      (window as WindowWithSpeechRecognition).webkitSpeechRecognition;
     if (!SpeechRecognitionClass) {
       setIsSupported(false);
       setState("unsupported-browser");
@@ -207,6 +229,19 @@ const processSpokenPhrase = useCallback(
 
     const matched = matchCommand(phrase);
 
+    if (matched === "ambiguous") {
+      setState("command-ambiguous");
+      announce(
+        `That voice command is ambiguous. Please say the complete command, such as 'Go to streams' or 'Create stream'.`,
+      );
+      setTimeout(() => {
+        setState((prev) =>
+          prev === "command-ambiguous" ? "listening" : prev,
+        );
+      }, 3000);
+      return false;
+    }
+
     if (matched) {
       executeCommand(matched, phrase);
       return true;
@@ -225,47 +260,8 @@ const processSpokenPhrase = useCallback(
 
     return false;
   },
-  [
-    matchCommand,
-    executeCommand,
-    pendingDestructiveCommand,
-    confirmDestructiveAction,
-    cancelDestructiveAction,
-    announce,
-  ]
+  [matchCommand, executeCommand, pendingDestructiveCommand, announce]
 );
-
-      const matched = matchCommand(phrase);
-      if (matched === "ambiguous") {
-        setState("command-ambiguous");
-        announce(
-          `That voice command is ambiguous. Please say the complete command, such as 'Go to streams' or 'Create stream'.`,
-        );
-        setTimeout(() => {
-          setState((prev) =>
-            prev === "command-ambiguous" ? "listening" : prev,
-          );
-        }, 3000);
-        return false;
-      }
-      if (matched) {
-        executeCommand(matched, phrase);
-        return true;
-      } else {
-        setState("command-unrecognized");
-        announce(
-          `Command not recognized for phrase: ${phrase}. Say 'Go to streams' or view command reference.`
-        );
-        setTimeout(() => {
-          setState((prev) =>
-            prev === "command-unrecognized" ? "listening" : prev
-          );
-        }, 3000);
-        return false;
-      }
-    },
-    [matchCommand, executeCommand, pendingDestructiveCommand, announce]
-  );
 
   // Destructive confirmations
   const confirmDestructiveAction = useCallback(() => {
@@ -298,8 +294,8 @@ const processSpokenPhrase = useCallback(
     }
 
     const SpeechRecognitionClass =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as WindowWithSpeechRecognition).SpeechRecognition ??
+      (window as WindowWithSpeechRecognition).webkitSpeechRecognition;
 
     if (!SpeechRecognitionClass) {
       setIsSupported(false);
@@ -326,7 +322,7 @@ const processSpokenPhrase = useCallback(
         announce("Voice navigation active. Listening for commands.");
       };
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event) => {
         const lastIndex = event.results.length - 1;
         const result = event.results[lastIndex];
         const spokenText = result[0].transcript;
@@ -339,7 +335,7 @@ const processSpokenPhrase = useCallback(
         }
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event) => {
         if (event.error === "not-allowed" || event.error === "permission-denied") {
           setState("permission-denied");
           announce(
