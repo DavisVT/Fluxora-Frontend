@@ -18,8 +18,6 @@ import {
 } from "../lib/onboarding";
 import { formatAssetAmount } from "../lib/formatters";
 import { toRecentStream } from "../lib/recentStreamMapper";
-import ErrorBoundary from "../components/ErrorBoundary";
-import { formatUsdc, toRecentStream } from "../lib/recentStreamMapper";
 import Button from "../components/Button";
 import WidgetErrorBoundary from "../components/WidgetErrorBoundary";
 import DashboardSummaryWidget from "../components/dashboard/DashboardSummaryWidget";
@@ -201,41 +199,6 @@ export default function Dashboard() {
           loading={loading}
         />
       </WidgetErrorBoundary>
-      <ErrorBoundary>
-        <div style={cardGrid}>
-          <div style={card}>
-            <div
-              className="text-label-md"
-              style={{ color: "var(--muted)", marginBottom: "0.25rem" }}
-            >
-              Active Streams
-            </div>
-            <div className="text-heading-2">{streams.length || "--"}</div>
-          </div>
-          <div style={card}>
-            <div
-              className="text-label-md"
-              style={{ color: "var(--muted)", marginBottom: "0.25rem" }}
-            >
-              Total Streaming
-            </div>
-            <div className="text-heading-2">
-              {totalStreaming > 0 ? formatUsdc(totalStreaming) : "-- USDC"}
-            </div>
-          </div>
-          <div style={card}>
-            <div
-              className="text-label-md"
-              style={{ color: "var(--muted)", marginBottom: "0.25rem" }}
-            >
-              Withdrawable
-            </div>
-            <div className="text-heading-2">
-              {withdrawable !== null ? formatUsdc(withdrawable) : "-- USDC"}
-            </div>
-          </div>
-        </div>
-      </ErrorBoundary>
 
       {hasError && (
         <div role="alert" style={walletBannerStyle}>
@@ -282,16 +245,24 @@ export default function Dashboard() {
             </Button>
           )}
         </>
-      ) : showOnboarding ? (
-        <ErrorBoundary>
-          <TreasuryOnboarding
+        <WidgetErrorBoundary name="Recent streams" onRetry={refetch}>
+          <DashboardStreamsWidget
+            streams={streams}
+            loading={loading}
+            error={error}
             walletConnected={walletConnected}
-            walletAddress={walletAddress}
-            onConnectWallet={() => setIsWalletModalOpen(true)}
-            onCreateStream={handleOnboardingCreateStream}
-            onDismiss={handleDismissOnboarding}
+            onRetry={refetch}
+            onCreateStream={() => setIsModalOpen(true)}
           />
-        </ErrorBoundary>
+        </WidgetErrorBoundary>
+      ) : showOnboarding ? (
+        <TreasuryOnboarding
+          walletConnected={walletConnected}
+          walletAddress={walletAddress}
+          onConnectWallet={() => setIsWalletModalOpen(true)}
+          onCreateStream={handleOnboardingCreateStream}
+          onDismiss={handleDismissOnboarding}
+        />
       ) : (
         <ErrorBoundary>
           <TreasuryEmptyState
@@ -299,6 +270,7 @@ export default function Dashboard() {
             onOpenOnboarding={handleOpenOnboarding}
           />
         </ErrorBoundary>
+        <TreasuryEmptyState onCreateStream={() => setIsModalOpen(true)} />
       )}
 
       <CreateStreamModal
