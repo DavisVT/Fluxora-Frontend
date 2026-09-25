@@ -253,7 +253,27 @@ export default function Dashboard() {
             onCreateStream={() => setIsModalOpen(true)}
           />
         </WidgetErrorBoundary>
-
+        <>
+          <ErrorBoundary>
+            <RecentStreams
+              streams={streams}
+              loading={loading}
+              error={error}
+              onRetry={refetch}
+              walletConnected={walletConnected}
+            />
+          </ErrorBoundary>
+          {!loading && !error && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => setIsModalOpen(true)}
+              aria-label="Create stream"
+            >
+              Create stream
+            </Button>
+          )}
+        </>
       ) : showOnboarding ? (
         <ErrorBoundary>
           <TreasuryOnboarding
