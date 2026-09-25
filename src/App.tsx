@@ -17,6 +17,8 @@ import {
   useState,
 } from "react";
 import ApiVersionGuard from "./components/ApiVersionGuard";
+
+import Layout from "./components/Layout";
 import AppNavbar from "./components/navigation/AppNavbar";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Layout from "./components/Layout";

@@ -255,6 +255,15 @@ export default function Dashboard() {
             onCreateStream={() => setIsModalOpen(true)}
           />
         </WidgetErrorBoundary>
+
+      ) : showOnboarding ? (
+        <ErrorBoundary>
+          <TreasuryOnboarding
+            walletConnected={walletConnected}
+            onRetry={refetch}
+            onCreateStream={() => setIsModalOpen(true)}
+          />
+        </WidgetErrorBoundary>
       ) : showOnboarding ? (
         <TreasuryOnboarding
           walletConnected={walletConnected}
